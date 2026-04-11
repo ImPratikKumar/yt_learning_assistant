@@ -1,5 +1,6 @@
 from openai import OpenAI
 from langchain_openai import ChatOpenAI
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 class LearningBot:
     def __init__(self, api_key):
@@ -16,37 +17,126 @@ class LearningBot:
         return response.choices[0].message.content
     
     def get_summary(self, transcript):
-        sys = f"""
-            You are an expert note-taker.
+        
+        model = ChatOpenAI(model='gpt-4o-mini', temperature=0.0)
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=6000,
+            chunk_overlap=800,
+            separators=["\n\n", "\n", ".", " "]
+        )
 
-            Your job is to convert a YouTube transcript into structured, high-quality study notes.
+        # Step 1: Chunking
+        chunks = splitter.split_text(transcript)
 
-            Instructions:
-            - Extract only important ideas (ignore filler, repetition, greetins)
-            - Keep it concise but informative
-            - Use bullet points
-            - Group related ideas under headings
-            - Highlight key concepts, definitions, and examples
-            - Preserve logical flow of the video
+        # Step 2: Chunk notes
+        partial_notes = []
+        for chunk in chunks:
+            chunk_prompt = f"""
+                You are an expert note-taker converting a YouTube lecture transcript into structured study notes.
+            
+                Context:
+                This is a PART of a longer video. Maintain continuity and avoid assuming this is the full content.
+            
+                Instructions:
+                - Extract only important ideas (ignore filler, repetition, greetings)
+                - Write concise but informative notes
+                - Use bullet points (no long paragraphs)
+                - Preserve logical flow with this chunk
+                - Capture:
+                    - Key concepts
+                    - Definitions
+                    - Examples (if any)
+                    - Steps / processes (if explained)
+                - Avoid repeating the same idea multiple times
+            
+                Output Format:
+            
+                ## Topic Covered
+                - <topic 1>
+                - <topic 2>
+            
+                ## Key Points
+                - <main idea 1>
+                    - <supporting detail>
+                - <main idea 2>
+            
+                ## Important Terms (if any)
+                - Term: Definition
+            
+                ## Examples (if any)
+                - <example>
+            
+                Transcript Chunk:
+                {chunk}
+            """
 
-            Output format:
+            result = model.invoke(chunk_prompt)
+            partial_notes.append(result.content)
 
-            Title: <generate a relevant title>
+        partial_notes_joined = "\n\n".join(partial_notes)
 
-            ## Key Topics
-            - Topic 1
-            - Topic 2
+        # Step 3: Merge
+        merge_prompt = f"""
+            You are an expert editor and educator.
 
-            ## Notes
-            - Main Point 1
-            - Supporting detail
-            - Main point 2
+            Below are structured notes extracted from different parts of a YouTube video.
+
+            Your job:
+            - Merge them into a SINGLE, coherent, well-structured note
+            - Restore logical flow of the original video
+            - Remove redundanc and repeated points
+            - Group related ideas under meaningful sections
+            - Ensure smooth transitions between sections
+            - Keep it concise but complete
+
+            DO NOT:
+            - Repeat the sampe concept multiple times
+            - Keep chunk boundaries visible
+            - Include irrelevant or low-value information
+
+            Output Format:
+
+            Title: <Generate a clear and revelant title>
+
+            ## Detailed Notes
+
+            ### <Section 1>
+            - Key idea
+                - Supporting detail
+
+            ### <Section 2>
+            - Key idea
 
             ## Key Takeaways
-            - Insight 1
-            - Insight 2
+            - Most important insights from the video
+
+            Notes to Merge:
+            {partial_notes_joined}
         """
-        return self._ask_gpt(sys, f"Transcript: {transcript}")
+        final_notes = model.invoke(merge_prompt).content
+
+        # Step 4: Refine
+        refine_prompt = f"""
+            You are a senior education refining study notes.
+
+            Improve the following notes by:
+            - Making them clearer and more structured
+            - Improving readability
+            - Ensuring logical flow
+            - Removing any remaining redundancy
+            - Keeping it concise but insightful
+
+            Enhancements:
+            - Add better section heading if needed
+            - Simplify complex explanations
+            - Ensure formatting is consistent
+
+            Final Notes:
+            {final_notes}
+        """
+        refined_notes = model.invoke(refine_prompt).content
+
+        return refined_notes
     
     def get_quiz(self, transcript):
         sys = "Create 3 hard MCQs based on this transcript."
