@@ -2,7 +2,7 @@ import os
 import streamlit as st
 from src.processor import extract_video_id, get_transcript
 from src.llm_engine import LearningBot
-from src.exporter import generate_pdf
+from src.exporter import generate_pdf, export_output
 from src.vector_store import subtile_pdf_to_db
 from dotenv import load_dotenv
 
@@ -44,7 +44,7 @@ if page == "YouTube Learning":
 
                     # Save transcript
                     transcript_title = f"{video_id}"
-                    generate_pdf(transcript_title, transcript, "subtitle")
+                    export_output(transcript_title, transcript, "subtitle")
 
                     if "Error" in transcript:
                         st.error(transcript)
@@ -56,7 +56,7 @@ if page == "YouTube Learning":
 
                             # Save summary
                             summary_title = f"{video_id}"
-                            generate_pdf(summary_title, transcript_summary, "summary")
+                            export_output(summary_title, transcript_summary, "summary")
 
                             st.markdown(transcript_summary)
                         
