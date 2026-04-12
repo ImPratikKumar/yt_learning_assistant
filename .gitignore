@@ -9,4 +9,4 @@ venv/
 *.ipynb
 archive/
 chroma_db/
-.md
+*.md
