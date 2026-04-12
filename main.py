@@ -3,7 +3,7 @@ import streamlit as st
 from src.processor import extract_video_id, get_transcript
 from src.llm_engine import LearningBot
 from src.exporter import generate_pdf, export_output
-from src.vector_store import subtile_pdf_to_db
+from src.vector_store import subtile_pdf_to_db, subtile_md_to_db
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -13,7 +13,7 @@ api_key = os.getenv('OPENAI_API_KEY')
 bot = LearningBot(api_key=api_key)
 
 # vector database
-vector_db = subtile_pdf_to_db(api_key=api_key)
+vector_db = subtile_md_to_db(api_key=api_key)
 
 # --------------------- SIDEBAR NAVIGATION ----------------#
 st.sidebar.title("Naviation")
