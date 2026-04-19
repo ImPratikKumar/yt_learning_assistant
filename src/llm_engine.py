@@ -157,3 +157,19 @@ class LearningBot:
         model = ChatOpenAI(model='gpt-4o-mini', temperature=0.0)
         result = model.invoke(prompt).content
         return result
+
+    def clean_subtitles(self, text):
+
+        prompt = f"""
+            Convert the following YouTube subtitles into clean, well-structured text:
+            - Fix punctuation
+            - Merge broken sentences
+            - Keep meaning intact
+
+            Text:
+            {text} 
+        """
+
+        model = ChatOpenAI(model="gpt-4o-mini", temperature=0.0)
+        result = model.invoke(prompt).content
+        return result

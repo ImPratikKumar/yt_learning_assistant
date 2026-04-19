@@ -46,6 +46,11 @@ if page == "YouTube Learning":
                     transcript_title = f"{video_id}"
                     export_output(transcript_title, transcript, "subtitle")
 
+                    # Save Cleaned transcript
+                    cleaned_transcript = bot.clean_subtitles(transcript)
+                    transcript_title = f"{video_id}"
+                    export_output(transcript_title, cleaned_transcript, "cleaned_subtitle")
+
                     if "Error" in transcript:
                         st.error(transcript)
                     else:

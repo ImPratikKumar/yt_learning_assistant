@@ -49,7 +49,7 @@ def generate_pdf(title, content, content_type: Literal["subtitle", "summary"]):
     # buffer.close()
     # return pdf_bytes
 
-def export_output(title, content, content_type: Literal["subtitle", "summary"]):
+def export_output(title, content, content_type: Literal["subtitle", "cleaned_subtitle" "summary"]):
 
     dir = r"E:\Projects\youtube_learning_assistant\data"
 
@@ -58,6 +58,8 @@ def export_output(title, content, content_type: Literal["subtitle", "summary"]):
         file_path = os.path.join(dir, f"subtitle_{title}.md")
     elif content_type == "summary":
         file_path = os.path.join(dir, f"summary_{title}.md")
+    elif content_type == "cleaned_subtitle":
+        file_path = os.path.join(dir, f"cleaned_subtitle_{title}.md")
 
     # writing file
     with open(f"{file_path}", "w", encoding="utf-8") as f:
