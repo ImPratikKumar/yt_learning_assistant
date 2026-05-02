@@ -1,4 +1,5 @@
 import os
+import pickle
 from langchain_community.document_loaders import PyPDFLoader, TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
@@ -90,6 +91,10 @@ def create_chunk(directory_path = r'.\data'):
     ## Add chunk id to metadata
     for i, chunk in enumerate(chunks):
         chunk.metadata["id"] = f"chunk_{i}"
+
+    ## Save chunks for reuse
+    with open("chunks.pkl", "wb") as f:
+        pickle.dump(chunks, f)
 
     return chunks
 
