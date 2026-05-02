@@ -3,7 +3,8 @@ import streamlit as st
 from src.processor import extract_video_id, get_transcript
 from src.llm_engine import LearningBot
 from src.exporter import generate_pdf, export_output
-from src.vector_store import subtile_pdf_to_db, subtile_md_to_db
+from langchain_community.vectorstores import Chroma
+from langchain_openai import OpenAIEmbeddings
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -12,8 +13,15 @@ api_key = os.getenv('OPENAI_API_KEY')
 # Initialize the bot once
 bot = LearningBot(api_key=api_key)
 
-# vector database
-vector_db = subtile_md_to_db(api_key=api_key)
+# load vector database
+@st.cache_resource
+def load_vector_db(api_key):
+    return Chroma(
+        persist_directory="./chroma_db",
+        embedding_function=OpenAIEmbeddings(api_key=api_key)
+    )
+
+vector_db = load_vector_db(api_key=api_key)
 
 # --------------------- SIDEBAR NAVIGATION ----------------#
 st.sidebar.title("Naviation")
