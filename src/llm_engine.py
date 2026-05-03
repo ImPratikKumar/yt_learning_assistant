@@ -146,6 +146,7 @@ class LearningBot:
         # Search for the top relevant chunks
         docs = vector_db.similarity_search(query, k=5)
         context = "\n".join([d.page_content for d in docs])
+        retrieved_ids = [doc.metadata["id"] for doc in docs]
 
         # Create prompt using the query and context
         prompt = f"""
@@ -156,7 +157,7 @@ class LearningBot:
         """
         model = ChatOpenAI(model='gpt-4o-mini', temperature=0.0)
         result = model.invoke(prompt).content
-        return result
+        return result, context, retrieved_ids
 
     def clean_subtitles(self, text):
 

@@ -127,7 +127,7 @@ def build_dataset(chunks):
                     "difficulty": qa.get("difficulty", "medium")
                 })
 
-    print("Started generating Q&A on single chunk...")
+    print("Started generating Q&A on multiple chunk...")
     multi_chunk_qa = generate_multi_chunk_qa(chunks)
 
     for qa in multi_chunk_qa:

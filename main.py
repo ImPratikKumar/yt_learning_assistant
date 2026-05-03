@@ -108,7 +108,7 @@ elif page == "RAG Chatbot":
 
         # Call RAG function
         with st.spinner("Thinking..."):
-            response = bot.ask_about_yt_video(user_input, vector_db)
+            response, context, retrieved_ids = bot.ask_about_yt_video(user_input, vector_db)
 
             if isinstance(response, dict):
                 response = response.get("answer", str(response))

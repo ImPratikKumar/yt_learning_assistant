@@ -101,6 +101,22 @@ def create_chunk(directory_path = r'.\data'):
 def create_vectordb(api_key, chunks):
 
     # 1. Create Embedding and Store in ChromaDB
+    ## below code appends to existing vector db, to clear the existing db use below code:
+    ### Option 1: 
+    # import shutil
+    # import os
+    # Delete existing DB directory if it exists
+    # if os.path.exists("./chroma_db"):
+    #     shutil.rmtree("./chroma_db")
+    ### Option 2:
+    # Initialize to access the existing collection
+    # existing_db = Chroma(
+    #     persist_directory="./chroma_db", 
+    #     embedding_function=OpenAIEmbeddings(api_key=api_key)
+    # )
+    # Wipe the collection
+    # existing_db.delete_collection()
+
     vector_db = Chroma.from_documents(
         documents=chunks,
         embedding=OpenAIEmbeddings(api_key=api_key),
