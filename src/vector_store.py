@@ -4,6 +4,7 @@ from langchain_community.document_loaders import PyPDFLoader, TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
+from langchain_core.documents import Document
 
 
 
@@ -117,6 +118,37 @@ def create_vectordb(api_key, chunks):
     # Wipe the collection
     # existing_db.delete_collection()
 
+    vector_db = Chroma.from_documents(
+        documents=chunks,
+        embedding=OpenAIEmbeddings(api_key=api_key),
+        persist_directory="./chroma_db"
+    )
+
+    return vector_db
+
+def index_single_video(api_key:str, video_id:str, cleaned_transcript:str):
+    """
+    Chunks and embeds a single video's cleaned transcript into the ChromaDB vector store.
+    """
+    # 1. Wrap the text into a standard Langchain Document Object
+    # We store store video_id in metadata so you can filter by video later in the chatbot.
+    doc = Document(
+        page_content=cleaned_transcript,
+        metadata={'video_id':video_id}
+    )
+
+    # 2. Split the document into manageable chunks
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=500,
+        chunk_overlap=100
+    )
+    chunks = text_splitter.split_documents([doc])
+
+    # 3. Add explicit chunk IDs for testing/evaluation metrics matching
+    for i, chunk in enumerate(chunks):
+        chunk.metadata["id"] = f"{video_id}_chunk_{i}"
+
+    # 4. Append to existing ChromaDB collection
     vector_db = Chroma.from_documents(
         documents=chunks,
         embedding=OpenAIEmbeddings(api_key=api_key),

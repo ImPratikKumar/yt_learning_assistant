@@ -2,6 +2,7 @@ import os
 import streamlit as st
 from src.processor import extract_video_id, get_transcript
 from src.llm_engine import LearningBot
+from src.vector_store import index_single_video
 from src.exporter import generate_pdf, export_output
 from langchain_community.vectorstores import Chroma
 from langchain_openai import OpenAIEmbeddings
@@ -21,7 +22,9 @@ def load_vector_db(api_key):
         embedding_function=OpenAIEmbeddings(api_key=api_key)
     )
 
-vector_db = load_vector_db(api_key=api_key)
+# We need to make sure we can modify this vector_db instance on the fly
+if "vector_db" not in st.session_state:
+    st.session_state.vector_db = load_vector_db(api_key=api_key)
 
 # --------------------- SIDEBAR NAVIGATION ----------------#
 st.sidebar.title("Naviation")
@@ -49,32 +52,40 @@ if page == "YouTube Learning":
             if st.button("Generate Learning Materials"):
                 with st.spinner("Reading transcript..."):
                     transcript = get_transcript(video_id)
-
+                    
+                if "Error" in transcript:
+                    st.error(transcript)
+                else:
                     # Save transcript
-                    transcript_title = f"{video_id}"
-                    export_output(transcript_title, transcript, "subtitle")
+                    export_output(video_id, transcript, "subtitle")
+                    st.toast("Saved Transcript", icon="✅")
 
                     # Save Cleaned transcript
-                    cleaned_transcript = bot.clean_subtitles(transcript)
-                    transcript_title = f"{video_id}"
-                    export_output(transcript_title, cleaned_transcript, "cleaned_subtitle")
+                    with st.spinner("Cleaning transcript..."):
+                        cleaned_transcript = bot.clean_subtitles(transcript)
+                        transcript_title = f"{video_id}"
+                        export_output(transcript_title, cleaned_transcript, "cleaned_subtitle")
+                    st.toast("Saved cleaned transcript", icon="✅")
 
-                    if "Error" in transcript:
-                        st.error(transcript)
-                    else:
-                        col1, col2 = st.tabs(["Summary", "Test My Knowledge"])
+                    with st.spinner("Embedding and Indexing video into knowledge base..."):
+                        st.session_state.vector_db = index_single_video(
+                            api_key=api_key,
+                            video_id=video_id,
+                            cleaned_transcript=cleaned_transcript
+                        )
+                    st.toast("Knowledge base updated successfully! 🎉", icon="✅")
+                    
+                    col1, col2 = st.tabs(["Summary", "Test My Knowledge"])
 
-                        with col1:
+                    with col1:
+                        with st.spinner("Generating transcript summary..."):
                             transcript_summary = bot.get_summary(transcript)
-
                             # Save summary
-                            summary_title = f"{video_id}"
-                            export_output(summary_title, transcript_summary, "summary")
-
+                            export_output(video_id, transcript_summary, "summary")
                             st.markdown(transcript_summary)
                         
-                        with col2:
-                            st.markdown("Comming Soon!")
+                    with col2:
+                        st.markdown("Comming Soon!")
         else:
             st.error("Invalid YouTube URL. Please check the link and try again.")
 
@@ -108,7 +119,9 @@ elif page == "RAG Chatbot":
 
         # Call RAG function
         with st.spinner("Thinking..."):
-            response, context, retrieved_ids = bot.ask_about_yt_video(user_input, vector_db)
+            response, context, retrieved_ids = bot.ask_about_yt_video(
+                user_input, 
+                st.session_state.vector_db)
 
             if isinstance(response, dict):
                 response = response.get("answer", str(response))
