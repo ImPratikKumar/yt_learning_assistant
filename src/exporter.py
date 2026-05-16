@@ -13,7 +13,7 @@ def generate_pdf(title, content, content_type: Literal["subtitle", "summary"]):
     # 2. Pass the buffer (not a filename) to SimpleDocTemplate
     # pdf = SimpleDocTemplate(buffer)
 
-    dir = "E:\Projects\youtube_learning_assistant\data"
+    dir = ".\data"
 
     if content_type == "subtitle":
         file_path = os.path.join(dir, f"subtitle_{title}.pdf")
@@ -49,9 +49,9 @@ def generate_pdf(title, content, content_type: Literal["subtitle", "summary"]):
     # buffer.close()
     # return pdf_bytes
 
-def export_output(title, content, content_type: Literal["subtitle", "cleaned_subtitle" "summary"]):
+def export_output(title, content, content_type: Literal["subtitle", "cleaned_subtitle", "summary"]):
 
-    dir = r"E:\Projects\youtube_learning_assistant\data"
+    dir = r".\data"
 
     # Generating file path
     if content_type == "subtitle":
