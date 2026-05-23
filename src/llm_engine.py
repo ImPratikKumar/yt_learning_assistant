@@ -285,20 +285,84 @@ class LearningBot:
         sys = "Create 3 hard MCQs based on this transcript."
         return self._ask_gpt(sys, transcript)
     
-    def ask_about_yt_video(self, query, vector_db):
-        # Search for the top relevant chunks
-        docs = vector_db.similarity_search(query, k=5)
-        context = "\n".join([d.page_content for d in docs])
-        retrieved_ids = [doc.metadata["id"] for doc in docs]
+    # def ask_about_yt_video(self, query, vector_db):
+    #     # Search for the top relevant chunks
+    #     docs = vector_db.similarity_search(query, k=5)
+    #     context = "\n".join([d.page_content for d in docs])
+    #     retrieved_ids = [doc.metadata["id"] for doc in docs]
 
-        # Create prompt using the query and context
-        prompt = f"""
-            Using the following YouTube subtitle excerpts,
-            Answer the following: {query}
+    #     # Create prompt using the query and context
+    #     prompt = f"""
+    #         Using the following YouTube subtitle excerpts,
+    #         Answer the following: {query}
         
-            Context: {context}
+    #         Context: {context}
+    #     """
+    #     model = ChatOpenAI(model='gpt-4o-mini', temperature=0.0)
+    #     result = model.invoke(prompt).content
+    #     return result, context, retrieved_ids
+
+    def ask_about_yt_video(self, query, vector_db, video_id, chat_history=[]):
+        """
+        Answers user questions by first rephrasing follow-up inputs using chat history,
+        and then searching ChromaDB with a strict metadata filter for the active video.
         """
         model = ChatOpenAI(model='gpt-4o-mini', temperature=0.0)
+
+        # 1. Contextualize / Rephrase the query if chat history exists
+        standalone_query = query
+        if chat_history:
+            # Format history for the contextualizer prompt
+            history_str = ""
+            for msg in chat_history[-5:]: # Look at the last 5 exchanges for speed/tloen economy
+                role = "User" if msg["role"] == "user" else "Assistant"
+                history_str += f"{role}: {msg['content']}\n"
+
+            rephrase_prompt = f"""
+                Given the following chat history and a follow-up question,rephrase the follow-up
+                question into a standalone question that can be understood WITHOUT the chat history.
+                If it is already a standalone question, return it exactly as it is.
+                DO NOT answer the question, just rephrase it.
+
+                Chat History:
+                {history_str}
+
+                Follow-up Question: {query}
+
+                Standalone Question:
+            """
+            try:
+                standalone_query = model.invoke(rephrase_prompt).content.strip()
+            except Exception:
+                standalone_query = query
+            # 2. Search ChromaDB with a strict metadata filter for this video
+            # This prevents chunks from other videos from leaking into your context!
+        try:
+            docs = vector_db.similarity_search(
+                standalone_query,
+                k=5,
+                filter={"video_id": video_id}
+            ) 
+        except Exception:
+            # Fallback if the database structure hasn't been re-initialized with the filter keys
+            docs = vector_db.similarity_search(standalone_query, k=5)
+
+        context = "\n".join([d.page_content for d in docs])
+        retrieved_ids = [d.metadata.get("id", "unkown") for d in docs]
+
+        # 3. Generate final answer with localized context
+        prompt = f"""
+            You are a helpful educational learning assistant. Using the following YouTube subtitle excerpts,
+            answer the following question comprehensively. If the context doesn't contain the answer, use your general
+            knowledge but explicitly clarify that it wasn't mentioned in the video.
+
+            Context from video:
+            {context}
+
+            Question: {standalone_query}
+
+            Answer:
+        """
         result = model.invoke(prompt).content
         return result, context, retrieved_ids
 

@@ -14,6 +14,16 @@ api_key = os.getenv('OPENAI_API_KEY')
 # Initialize the bot once
 bot = LearningBot(api_key=api_key)
 
+# Initializing session state variable
+if "vector_db" not in st.session_state:
+    st.session_state.vector_db = None
+
+if "active_video_id" not in st.session_state:
+    st.session_state.active_video_id = None
+
+if "last_video_id" not in st.session_state:
+    st.session_state.last_video_id = None
+
 # load vector database
 @st.cache_resource
 def load_vector_db(api_key):
@@ -56,6 +66,9 @@ if page == "YouTube Learning":
                 if "Error" in transcript:
                     st.error(transcript)
                 else:
+                    # Set active video session ID
+                    st.session_state.active_video_id = video_id
+
                     # Save transcript
                     export_output(video_id, transcript, "subtitle")
                     st.toast("Saved Transcript", icon="✅")
@@ -91,46 +104,59 @@ if page == "YouTube Learning":
 
 #--------------- Page 2: RAG Chatbot ---------------------------#
 elif page == "RAG Chatbot":
-
     st.title("RAG Chatbot 🤖")
 
-    # Initialize chat history
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+    # Check if a video has been selected first
+    if not st.session_state.active_video_id:
+        st.info("⚠️ Please go to the **YouTube Learning** page and load a video before using the Chatbot.")
+    else:
+        st.caption(f"Currently chatting about Video ID: `{st.session_state.active_video_id}`")
+
+        # Initialize chat history
+        # if "messages" not in st.session_state:
+        #     st.session_state.messages = []
+
+        if st.session_state.last_video_id != st.session_state.active_video_id:
+            st.session_state.messages = []
+            st.session_state.last_video_id = st.session_state.active_video_id
     
-    # Display previous messages
-    for message in st.session_state.messages:
-        if isinstance(message, dict):
-            with st.chat_message(message["role"]):
-                st.markdown(message["content"])
+        # Display previous messages
+        for message in st.session_state.messages:
+            if isinstance(message, dict):
+                with st.chat_message(message["role"]):
+                    st.markdown(message["content"])
 
-    # User input
-    user_input = st.chat_input("Ask something...")
+        # User input
+        user_input = st.chat_input("Ask something...")
 
-    if user_input:
-        # Store user message
-        st.session_state.messages.append({
-            "role": "user",
-            "content": user_input
-        })
+        if user_input:
+            # Store user message
+            st.session_state.messages.append({
+                "role": "user",
+                "content": user_input
+            })
 
-        with st.chat_message("user"):
-            st.markdown(user_input)
+            with st.chat_message("user"):
+                st.markdown(user_input)
 
-        # Call RAG function
-        with st.spinner("Thinking..."):
-            response, context, retrieved_ids = bot.ask_about_yt_video(
-                user_input, 
-                st.session_state.vector_db)
+            # Call RAG function
+            with st.spinner("Thinking..."):
+                # Pass both active_video_id and session history to the backend engine
+                response, context, retrieved_ids = bot.ask_about_yt_video(
+                    query=user_input,
+                    vector_db=st.session_state.vector_db,
+                    video_id=st.session_state.active_video_id, 
+                    chat_history=st.session_state.messages[:-1]  # Exclude the query we just added
+                )
 
-            if isinstance(response, dict):
-                response = response.get("answer", str(response))
+            # if isinstance(response, dict):
+            #     response = response.get("answer", str(response))
 
-        # Store assistant response
-        st.session_state.messages.append({
-            "role": "assistant",
-            "content": response
-        })
+            # Store assistant response
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": response
+            })
 
-        with st.chat_message("assistant"):
-            st.markdown(response)
+            with st.chat_message("assistant"):
+                st.markdown(response)
